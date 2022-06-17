@@ -27,6 +27,11 @@ if(! dir.exists(here("Figures"))){
   dir.create(here("Figures"))
 }
 
+# load the cleaned RFU data: run the script: process_plate_reader_data.R
+
+# load the cleaned cell count data: which we just produced
+
+
 # if we want to plot multiple plots, we can copy-paste
 ggplot(data = pl_data.p %>% filter(TREAT == "AMB_DC"),
        mapping = aes(x = Date, y = RFU, colour = TREAT)) +
