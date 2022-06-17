@@ -121,4 +121,8 @@ if(! dir.exists(here("Figures"))){
   dir.create(here("Figures"))
 }
 
+# export the figure p1 to the Figures folder in the project folder
+ggsave(filename = here("Figures/fig_1.png"), plot = p1,
+       width = 25, height = 15, units = "cm", dpi = 300)
 
+### END
