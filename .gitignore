@@ -10,6 +10,7 @@
 *.csv
 *.xlsx
 *.txt
+*.png
 
 # Example code in package build process
 *-Ex.R

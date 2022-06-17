@@ -12,80 +12,113 @@
 
 # attached base packages: stats, graphics, grDevices, utils, datasets, methods, base
 
-# set working directory
-setwd("C:/Users/james/Dropbox/IMBRSea_2021")
-
-# check that the working directory is correct
-getwd()
-
 # load relevant libraries
 
-library(dplyr) # data wrangling
-library(readr) # read data files
-library(tidyr) # data wrangling
-library(ggplot2) # data visualisation
-library(stringr) # work with strings
-library(lubridate) # work with dates
-library(here) # path management
+library(dplyr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(here)
 
-# load the data
-Barcoding <- read.table(file = here("R_projects/SelectionExperiment/Input/All_strains.txt"), 
+# where is here()'s working directory?
+getwd()
+here("All_strains.txt")
+
+# load the data: '\t' - separator for text files; head = TRUE - if the file has column names
+Barcoding <- read.table(file = "C:/Users/james/Dropbox/IMBRSea_2021/R_projects/SelectionExperiment/Input/All_strains.txt",
                         sep = '\t', header = TRUE)
-sapply(Barcoding, class)
-str(Barcoding)
-unique(Barcoding$Treatment)
 
-# remove the strain samples
-unique(Barcoding$Strain)
+head(Barcoding) # views the first 6 rows
+str(Barcoding) # shows the structure of the different variables (i.e. numeric, character etc.)
+unique(Barcoding$Treatment) # shows unique values of the variable: control versus copper enrichned
+unique(Barcoding$Population) # two different S. marinoi populations
 
+# remove the strains samples i.e. Population == "RO5AV" and Experiment == NA
 Barcoding2 <- 
   Barcoding %>%
-  filter(Experiment %in% c("VG", "GP"))
+  filter(Experiment %in% c("VG", "GP")) # %in% very important!
+unique(Barcoding2$Treatment)
 
-# calculate averages for the barcoding data
+# we can't use == for more than one value matching
+Barcoding %>%
+  filter(Experiment == c("VG", "GP"))
+
+# why? 
+x <- c("A", "A", "B", "A", "C")
+x[x == c("A", "B")]
+x[x %in% c("A", "B")] # this is the correct wat
+
+# view the data
+View(Barcoding2)
+
+# calculate mean relative abundance for each population, treatment, timepoint and strain
+# across the five replicates
+
 Barcoding_Ave <- 
   Barcoding2 %>%
-  group_by(Population, Treatment, Timepoint, Strain) %>%
-  summarise(mean = mean(Relative_abundance),
-            sd = sd(Relative_abundance), .groups = "drop")
+  group_by(Population, Treatment, Timepoint, Strain) %>% # groups by unique combinations of these factors
+  summarise(mean = mean(Relative_abundance), # takes the mean across replicates for each unique combination of factors specified in group_by()
+            sd = sd(Relative_abundance), # takes the sd across replicates
+            n = n(), # calculates the number of replicates within each group (as set up by group_by)
+            .groups = "drop" ) # .groups = "drop" removes the grouping structure
+View(Barcoding_Ave)
 
-# remove RO5 samples
-Barcoding_Ave <-
-  Barcoding_Ave %>%
-  filter(Population %in% c("VG", "GP"))
+# remove the R05 samples
+unique(Barcoding_Ave$Population)
 
-# lets also Remove RO5AC from individual samples
-unique(Barcoding_Ave$Treatment)
+# select the two populations we want
 Barcoding_Ave <- 
   Barcoding_Ave %>%
-  filter(Strain != 'RO5AC')
+  filter( Population %in% c("VG", "GP") )
 
-# clone start values to Cu
+# we unselect the population we don't want: ! means 'not'
+# Barcoding_Ave %>%
+# filter(Population != "R05AC")
+
+# a note on the ! sign
+x <- c(TRUE, FALSE, TRUE)
+x
+!x  
+
+# all populations that are not VG or GP
+# Barcoding_Ave %>%
+# filter( !(Population %in% c("VG", "GP")) )
+
+# let's remove the R05AV from individual samples
+Barcoding_Ave <- 
+  Barcoding_Ave %>%
+  filter(Strain != "RO5AC")
+
+View(Barcoding_Ave)
+
+# clone start values to copper treatment
 Clone0 <- 
   Barcoding_Ave %>%
-  filter(Timepoint == "0")
+  filter(Timepoint == 0)
+View(Clone0)
+
+# recode the control value to copper
 Clone0$Treatment <- recode_factor(Clone0$Treatment, "Control" = "Copper")
+
+# stick the Clone0 file onto the bottom of the Barcoding_Ave data.frame
 Barcoding_Ave <- rbind(Barcoding_Ave, Clone0)
+View(Barcoding_Ave)
 
-# plot Bjorn's graph
-library(RColorBrewer)
-n <- 58
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-pie(rep(1,n), col=sample(col_vector, n))
-
-#Lets make it all in one graph
-sapply(Barcoding_Ave, class)
-Barcoding_Ave$Timepoint <- as.numeric(as.character(Barcoding_Ave$Timepoint))
-
+# plot the graph
 p1 <- 
-  ggplot(data = Barcoding_Ave, 
-         mapping = aes(x = Timepoint, y = mean , fill=Strain)) + 
-  geom_area(position='fill') +
-  facet_grid(rows = vars(Population), cols = vars(Treatment)) +
-  labs (x="Time (days)", y=("Relative biomass"), title = "") +
+  ggplot(data = Barcoding_Ave,
+         mapping = aes(x = Timepoint, y = mean, fill = Strain)) +
+  geom_area(position = "fill") +
+  facet_grid(rows = vars(Population), cols = vars(Treatment) ) +
+  ylab("Relative abundance (average)") +
+  xlab("Time") +
   scale_fill_viridis_d(option = "C") +
   theme_bw()
-p1
+p1  
 
-### END
+# check that we have a Data folder to output our processed data
+if(! dir.exists(here("Figures"))){
+  dir.create(here("Figures"))
+}
+
+
